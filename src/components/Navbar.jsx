@@ -9,11 +9,11 @@ import {
   Home,
   FileText,
   Settings,
-  Bell,
   Clock,
   Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import NotificationDropdown from './NotificationDropdown';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -126,11 +126,8 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Notifications */}
-            <button className="relative p-2 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Notifications - Replace with NotificationDropdown */}
+            <NotificationDropdown />
 
             {/* Profile Dropdown */}
             <div className="relative" ref={profileRef}>
