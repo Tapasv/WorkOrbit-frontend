@@ -22,9 +22,11 @@ const ManagerDashboard = () => {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  useEffect(() => {
+useEffect(() => {
+  if (User) {
     fetchAllRequests();
-  }, []);
+  }
+}, [User]); // ⬅️ Add User dependency
 
   const fetchAllRequests = async () => {
     try {

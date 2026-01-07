@@ -30,9 +30,12 @@ const EmployeeDashboard = () => {
     description: '',
   });
 
+  // ✅ FIX: Fetch when component mounts AND when user changes
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    if (user) {
+      fetchRequests();
+    }
+  }, [user]);
 
   useEffect(() => {
     filterRequests();
