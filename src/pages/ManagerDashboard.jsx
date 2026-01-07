@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../utils/axiosConfig';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import {
   CheckCircle,
   XCircle,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 
 const ManagerDashboard = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +25,10 @@ const ManagerDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
 
 useEffect(() => {
-  if (User) {
+  if (user) {
     fetchAllRequests();
   }
-}, [User]); // ⬅️ Add User dependency
+}, [user]);
 
   const fetchAllRequests = async () => {
     try {

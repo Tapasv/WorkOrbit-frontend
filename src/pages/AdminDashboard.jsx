@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../utils/axiosConfig';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import {
   FileText,
   Clock,
@@ -20,6 +21,7 @@ import {
 import React from 'react';
 
 const AdminDashboard = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,10 +30,10 @@ const AdminDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
 
 useEffect(() => {
-  if (User) {
+  if (user) {
     fetchAllRequests();
   }
-}, [User]);
+}, [user]);
 
   useEffect(() => {
     filterRequests();
