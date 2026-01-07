@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -6,17 +7,27 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing auth on mount
+  // 🔧 FIX: Use sessionStorage for tab-specific auth + localStorage for token
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        const storedUser = localStorage.getItem('user');
+        // Check sessionStorage first (tab-specific)
+        let storedUser = sessionStorage.getItem('user');
         const storedToken = localStorage.getItem('token');
+        
+        // If no user in sessionStorage, check localStorage (for initial load)
+        if (!storedUser && storedToken) {
+          storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            // Copy to sessionStorage for this tab
+            sessionStorage.setItem('user', storedUser);
+          }
+        }
         
         if (storedUser && storedToken) {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          console.log('✅ User restored from localStorage:', parsedUser);
+          console.log('✅ User restored from storage:', parsedUser);
         } else {
           console.log('ℹ️ No stored auth found');
         }
@@ -25,19 +36,40 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        sessionStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
+
+    // 🔔 Listen for storage changes from other tabs
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' && !e.newValue) {
+        // Token was removed in another tab - logout this tab too
+        console.log('🚪 Logout detected in another tab');
+        setUser(null);
+        sessionStorage.removeItem('user');
+        toast.info('You have been logged out');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const login = (userData, token) => {
     console.log('🔐 Logging in user:', userData);
     setUser(userData);
+    
+    // Store user in BOTH localStorage (for initial load) and sessionStorage (tab-specific)
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', token);
+    sessionStorage.setItem('user', JSON.stringify(userData));
   };
 
   const logout = () => {
@@ -46,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
-    // Don't use navigate here - let the component handle it
+    sessionStorage.removeItem('user');
   };
 
   if (loading) {

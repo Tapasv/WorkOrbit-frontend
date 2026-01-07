@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../hooks/useSocket';
 import api from '../utils/axiosConfig';
 import { 
   Bell, 
@@ -15,6 +17,8 @@ import {
 import toast from 'react-hot-toast';
 
 const NotificationDropdown = () => {
+  const { user } = useAuth();
+  const { socket, isConnected } = useSocket(user);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -46,11 +50,39 @@ const NotificationDropdown = () => {
     }
   }, [isOpen]);
 
-  // Poll for unread count every 30 seconds
+  // 🔌 SOCKET.IO REAL-TIME NOTIFICATIONS
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    console.log('🔔 Setting up notification listener');
+
+    // Listen for new notifications
+    socket.on('new-notification', (data) => {
+      console.log('🔔 New notification received:', data);
+      
+      // Update unread count
+      setUnreadCount(data.unreadCount);
+      
+      // Add new notification to list if dropdown is open
+      if (isOpen) {
+        setNotifications(prev => [data.notification, ...prev]);
+      }
+      
+      // Show toast notification
+      toast.success(data.notification.title, {
+        icon: '🔔',
+        duration: 4000,
+      });
+    });
+
+    return () => {
+      socket.off('new-notification');
+    };
+  }, [socket, isConnected, isOpen]);
+
+  // Initial fetch of unread count
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
@@ -194,9 +226,13 @@ const NotificationDropdown = () => {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full px-1">
+          <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full px-1 animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
+        )}
+        {/* Connection Status Indicator */}
+        {isConnected && (
+          <span className="absolute bottom-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
         )}
       </button>
 
@@ -205,7 +241,12 @@ const NotificationDropdown = () => {
         <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-fade-in z-50">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex items-center justify-between">
-            <h3 className="text-white font-semibold">Notifications</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-white font-semibold">Notifications</h3>
+              {isConnected && (
+                <span className="px-2 py-0.5 bg-green-500 text-white text-xs rounded-full">Live</span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {notifications.some(n => !n.isRead) && (
                 <button
@@ -255,12 +296,10 @@ const NotificationDropdown = () => {
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        {/* Icon */}
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClass}`}>
                           <Icon className="w-5 h-5" />
                         </div>
 
-                        {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <p className="font-semibold text-gray-900 text-sm">
