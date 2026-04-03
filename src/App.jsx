@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 
 // Pages
 import Login from './pages/Login';
@@ -16,6 +17,32 @@ import ManagerAttendance from './pages/ManagerAttendance';
 import AdminAttendance from './pages/AdminAttendance';
 import ManagerTeams from './pages/ManagerTeams';
 import AdminTeams from './pages/AdminTeams';
+
+// Smart root redirect — sends logged-in users to their dashboard, others to /login
+const RootRedirect = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  const dashboardMap = {
+    Admin: '/admin',
+    Manager: '/manager',
+    Employee: '/employee',
+  };
+
+  return <Navigate to={dashboardMap[user.role] || '/login'} replace />;
+};
 
 function App() {
   return (
@@ -41,6 +68,9 @@ function App() {
           }}
         />
         <Routes>
+          {/* Root route — smart redirect based on auth state */}
+          <Route path="/" element={<RootRedirect />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -79,9 +109,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<NotFound />} />
 
           <Route
             path="/employee/attendance"
@@ -127,6 +154,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>
