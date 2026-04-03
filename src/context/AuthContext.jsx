@@ -7,36 +7,31 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔧 FIX: Use sessionStorage for tab-specific auth + localStorage for token
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        // Check sessionStorage first (tab-specific)
-        let storedUser = sessionStorage.getItem('user');
-        const storedToken = localStorage.getItem('token');
-        
-        // If no user in sessionStorage, check localStorage (for initial load)
-        if (!storedUser && storedToken) {
-          storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            // Copy to sessionStorage for this tab
-            sessionStorage.setItem('user', storedUser);
-          }
-        }
-        
+        const rememberMe = localStorage.getItem('rememberMe') === 'true';
+
+        // If rememberMe was set, restore from localStorage, otherwise sessionStorage
+        const storedUser = rememberMe
+          ? localStorage.getItem('user')
+          : sessionStorage.getItem('user');
+        const storedToken = rememberMe
+          ? localStorage.getItem('token')
+          : sessionStorage.getItem('token');
+
         if (storedUser && storedToken) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-          console.log('✅ User restored from storage:', parsedUser);
-        } else {
-          console.log('ℹ️ No stored auth found');
+          setUser(JSON.parse(storedUser));
         }
       } catch (error) {
-        console.error('❌ Failed to parse stored user:', error);
+        console.error('Failed to restore auth:', error);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('rememberMe');
         sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('refreshToken');
       } finally {
         setLoading(false);
       }
@@ -44,41 +39,51 @@ export const AuthProvider = ({ children }) => {
 
     initializeAuth();
 
-    // 🔔 Listen for storage changes from other tabs
+    // Listen for logout from other tabs
     const handleStorageChange = (e) => {
       if (e.key === 'token' && !e.newValue) {
-        // Token was removed in another tab - logout this tab too
-        console.log('🚪 Logout detected in another tab');
         setUser(null);
         sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token');
         toast.info('You have been logged out');
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const login = (userData, token) => {
-    console.log('🔐 Logging in user:', userData);
+  const login = (userData, token, rememberMe = false) => {
     setUser(userData);
-    
-    // Store user in BOTH localStorage (for initial load) and sessionStorage (tab-specific)
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', token);
-    sessionStorage.setItem('user', JSON.stringify(userData));
+
+    if (rememberMe) {
+      // Persist even after browser is closed
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', token);
+      localStorage.setItem('rememberMe', 'true');
+      // Clear sessionStorage to avoid conflicts
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+    } else {
+      // Only lasts for the current browser session
+      sessionStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.setItem('token', token);
+      // Clear localStorage to avoid conflicts
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('rememberMe');
+    }
   };
 
   const logout = () => {
-    console.log('🚪 Logging out user');
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('rememberMe');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('refreshToken');
   };
 
   if (loading) {

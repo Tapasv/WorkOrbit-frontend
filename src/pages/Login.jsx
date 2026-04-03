@@ -10,6 +10,7 @@ const Login = () => {
     username: '',
     password: '',
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -30,12 +31,16 @@ const Login = () => {
       const response = await api.post('/auth/login', formData);
       const { token, refreshToken, user } = response.data;
 
-      login(user, token);
-      localStorage.setItem('refreshToken', refreshToken);
+      login(user, token, rememberMe);
+
+      if (rememberMe) {
+        localStorage.setItem('refreshToken', refreshToken);
+      } else {
+        sessionStorage.setItem('refreshToken', refreshToken);
+      }
 
       toast.success(`Welcome back, ${user.Username}!`);
 
-      // Navigate based on role
       switch (user.role) {
         case 'Admin':
           navigate('/admin');
@@ -128,9 +133,11 @@ const Login = () => {
 
             {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
-              <label className="flex items-center">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>

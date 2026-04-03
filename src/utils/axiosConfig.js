@@ -7,30 +7,44 @@ const api = axios.create({
   },
 });
 
-// Request interceptor - Add token to every request
+// Helper to get token from the correct storage
+const getToken = () => {
+  const rememberMe = localStorage.getItem('rememberMe') === 'true';
+  return rememberMe
+    ? localStorage.getItem('token')
+    : sessionStorage.getItem('token');
+};
+
+// Helper to clear all auth data from both storages
+const clearAuth = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('rememberMe');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('user');
+  sessionStorage.removeItem('refreshToken');
+};
+
+// Request interceptor - attach token to every request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle auth errors
+// Response interceptor - handle expired/invalid token
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      console.warn('⚠️ 401 Unauthorized - Clearing auth and redirecting to login');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('refreshToken'); // Also remove refresh token
+      console.warn('401 Unauthorized - clearing auth and redirecting to login');
+      clearAuth();
       window.location.href = '/login';
     }
     return Promise.reject(error);
